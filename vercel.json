@@ -1,20 +1,11 @@
 {
   "buildCommand": "npm run build",
-  "devCommand": "npm run dev",
-  "installCommand": "npm install",
-  "framework": null,
   "outputDirectory": "build/client",
-  "functions": {
-    "build/server/index.js": {
-      "runtime": "nodejs20.x",
-      "includeFiles": "build/server/**",
-      "maxDuration": 30
-    }
-  },
+  "framework": null,
   "rewrites": [
     {
       "source": "/(.*)",
-      "destination": "/build/server/index.js"
+      "destination": "/api"
     }
   ]
 }
