@@ -1,0 +1,18 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background: Brand Black -->
+  <rect width="1024" height="1024" rx="200" fill="#1a1a1a"/>
+  
+  <!-- Calendar Body -->
+  <rect x="162" y="256" width="700" height="600" rx="60" stroke="white" stroke-width="60"/>
+  
+  <!-- Header Accent: Brand Teal -->
+  <path d="M162 316C162 282.863 188.863 256 222 256H802C835.137 256 862 282.863 862 316V400H162V316Z" fill="#008080"/>
+  
+  <!-- Rings/Clips -->
+  <rect x="282" y="150" width="60" height="180" rx="30" fill="white"/>
+  <rect x="682" y="150" width="60" height="180" rx="30" fill="white"/>
+  
+  <!-- Checkmark Date: Brand Teal -->
+  <path d="M350 650 L480 780 L680 550" stroke="#008080" stroke-width="80" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
+

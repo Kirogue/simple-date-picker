@@ -1,0 +1,8 @@
+api_version = "2024-10"
+
+name = "Delivery Date Picker"
+handle = "delivery-date-picker"
+
+uid = "e692c04d-bbc2-459e-34b3-e3c0ba93024ffa2d7ca5"
+
+type = "theme"

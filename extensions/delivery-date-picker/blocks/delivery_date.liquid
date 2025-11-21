@@ -1,0 +1,447 @@
+<style>
+  .delivery-date-container {
+    margin: 1rem 0;
+    max-width: {{ block.settings.container_width }}%;
+  }
+  .delivery-date-label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: bold;
+    color: {{ block.settings.label_color }};
+    font-size: {{ block.settings.label_size }}px;
+  }
+  .delivery-date-input {
+    width: 100%;
+    padding: {{ block.settings.input_padding }}px;
+    border: 1px solid {{ block.settings.border_color }};
+    border-radius: {{ block.settings.border_radius }}px;
+    background-color: {{ block.settings.bg_color }};
+    color: {{ block.settings.text_color }};
+    font-size: 16px; /* Prevent zoom on mobile */
+  }
+  .delivery-date-input:focus {
+    outline: 2px solid {{ block.settings.focus_color }};
+    border-color: transparent;
+  }
+  .delivery-help-text {
+    margin-top: 0.5rem; 
+    font-size: 0.9em; 
+    color: {{ block.settings.help_text_color }};
+  }
+  .delivery-error-msg {
+    color: {{ block.settings.error_color }};
+    display: none;
+    margin-top: 0.5rem;
+    font-size: 0.9em;
+    font-weight: bold;
+  }
+</style>
+
+<div class="delivery-date-container">
+  <label for="delivery-date-input" class="delivery-date-label">
+    {{ block.settings.title }}
+  </label>
+  <input 
+    type="date" 
+    id="delivery-date-input" 
+    name="attributes[Delivery Date]" 
+    class="delivery-date-input" 
+    value="{{ cart.attributes['Delivery Date'] }}"
+  >
+  
+  {% if block.settings.enable_time_slots %}
+    <label for="delivery-time-input" class="delivery-date-label" style="margin-top: 1rem;">
+      {{ block.settings.time_label }}
+    </label>
+    <select 
+      id="delivery-time-input" 
+      name="attributes[Delivery Time]" 
+      class="delivery-date-input"
+    >
+      <option value="" disabled {% unless cart.attributes['Delivery Time'] %}selected{% endunless %}>Select a time...</option>
+      {% assign slots = block.settings.time_slots | split: ',' %}
+      {% for slot in slots %}
+        <option value="{{ slot | strip }}" {% if cart.attributes['Delivery Time'] == slot %}selected{% endif %}>
+          {{ slot | strip }}
+        </option>
+      {% endfor %}
+    </select>
+  {% endif %}
+
+  <p id="delivery-date-error" class="delivery-error-msg"></p>
+  {% if block.settings.help_text != blank %}
+    <p class="delivery-help-text">
+      {{ block.settings.help_text }}
+    </p>
+  {% endif %}
+</div>
+
+<script>
+(function() {
+  const input = document.getElementById('delivery-date-input');
+  const errorMsg = document.getElementById('delivery-date-error');
+  if (!input) return;
+
+    const settings = {
+    prepDays: {{ block.settings.preparation_days | default: 0 }},
+    disabledDays: [
+      {% if block.settings.disable_sunday %}0,{% endif %}
+      {% if block.settings.disable_monday %}1,{% endif %}
+      {% if block.settings.disable_tuesday %}2,{% endif %}
+      {% if block.settings.disable_wednesday %}3,{% endif %}
+      {% if block.settings.disable_thursday %}4,{% endif %}
+      {% if block.settings.disable_friday %}5,{% endif %}
+      {% if block.settings.disable_saturday %}6,{% endif %}
+    ],
+    blockedDates: "{{ block.settings.blocked_dates }}", 
+    cutoffTime: "{{ block.settings.cutoff_time }}",
+    limitMaxDays: {{ block.settings.limit_max_days | default: 90 }}
+  };
+
+  // Helper: Parse blocked dates
+  const blockedDatesSet = new Set(
+    settings.blockedDates.split(',').map(d => d.trim())
+  );
+
+  // ... (Time Slot Logic)
+  const timeSlotSelect = document.getElementById('delivery-time-input');
+  if (timeSlotSelect) {
+    timeSlotSelect.addEventListener('change', function() {
+      updateCartAttribute('Delivery Time', this.value);
+    });
+  }
+
+
+  // 1. Calculate Min Date (Handling Lead Time + Cutoff Time)
+  const calculateMinDate = () => {
+    const now = new Date();
+    let addedDays = settings.prepDays;
+
+    // If current time is past cutoff, add 1 extra day
+    if (settings.cutoffTime) {
+      const [cutHour, cutMinute] = settings.cutoffTime.split(':').map(Number);
+      const currentHour = now.getHours();
+      const currentMinute = now.getMinutes();
+
+      if (currentHour > cutHour || (currentHour === cutHour && currentMinute >= cutMinute)) {
+        addedDays += 1;
+      }
+    }
+
+    const minDate = new Date();
+    minDate.setDate(minDate.getDate() + addedDays);
+    return minDate;
+  };
+  
+  // 2. Calculate Max Date
+  const calculateMaxDate = (minDateObj) => {
+      const maxDate = new Date(minDateObj);
+      maxDate.setDate(maxDate.getDate() + settings.limitMaxDays);
+      return maxDate;
+  }
+
+  const minDateObj = calculateMinDate();
+  input.min = minDateObj.toISOString().split('T')[0];
+  
+  const maxDateObj = calculateMaxDate(minDateObj);
+  input.max = maxDateObj.toISOString().split('T')[0];
+
+  // 3. Validation Logic
+  const validateDate = (dateString) => {
+    if (!dateString) return true; // Empty is valid unless required (not enforced here)
+
+    const selected = new Date(dateString + 'T00:00:00'); // Force local time
+    const dayOfWeek = selected.getDay(); // 0 = Sun, 6 = Sat
+
+    // Error Messages from Settings
+    const errorMessages = {
+      weekend: "{{ block.settings.error_weekend }}",
+      unavailable: "{{ block.settings.error_unavailable }}",
+      disabledDay: "{{ block.settings.error_disabled_day }}"
+    };
+
+    // Check Weekends/Specific Days
+    if (settings.disabledDays.includes(dayOfWeek)) {
+       return errorMessages.disabledDay || "We do not deliver on this day of the week.";
+    }
+
+    // Check Specific Blocked Dates
+    if (blockedDatesSet.has(dateString)) {
+      return errorMessages.unavailable || "This date is unavailable for delivery.";
+    }
+
+    return null; // Valid
+  };
+
+  // 4. Event Listeners
+  input.addEventListener('change', function(e) {
+    const selectedDate = this.value;
+    const error = validateDate(selectedDate);
+
+    if (error) {
+      // Show error, clear input
+      errorMsg.textContent = error;
+      errorMsg.style.display = 'block';
+      this.value = ''; 
+      
+      updateCartAttribute('Delivery Date', '');
+    } else {
+      // Valid
+      errorMsg.style.display = 'none';
+      updateCartAttribute('Delivery Date', selectedDate);
+    }
+  });
+
+  // 5. AJAX Update
+  function updateCartAttribute(name, value) {
+    const root = window.Shopify && window.Shopify.routes ? window.Shopify.routes.root : '/';
+    const url = root + 'cart/update.js';
+    
+    const payload = { attributes: {} };
+    payload.attributes[name] = value;
+
+    fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    })
+    .then(r => r.json())
+    .catch(e => console.error('Error saving attribute:', e));
+  }
+
+})();
+</script>
+
+{% schema %}
+{
+  "name": "Delivery Date Picker",
+  "target": "section",
+  "settings": [
+    {
+      "type": "header",
+      "content": "Appearance"
+    },
+    {
+      "type": "text",
+      "id": "title",
+      "label": "Field Title",
+      "default": "Select Delivery Date"
+    },
+    {
+      "type": "text",
+      "id": "help_text",
+      "label": "Help Message",
+      "default": "Please choose a date for your delivery."
+    },
+    {
+      "type": "header",
+      "content": "Rules & Logistics"
+    },
+    {
+      "type": "number",
+      "id": "preparation_days",
+      "label": "Preparation Days (Lead Time)",
+      "default": 0,
+      "info": "Days to block from today."
+    },
+    {
+      "type": "text",
+      "id": "cutoff_time",
+      "label": "Daily Cut-off Time (24h)",
+      "info": "Format: HH:MM (e.g., 14:00). If ordered after this time, +1 day is added to lead time.",
+      "placeholder": "14:00"
+    },
+    {
+      "type": "number",
+      "id": "limit_max_days",
+      "label": "Max Future Days",
+      "default": 90,
+      "info": "How far in the future can they book?"
+    },
+    {
+      "type": "header",
+      "content": "Blackout Days (Weekly)"
+    },
+    {
+      "type": "checkbox",
+      "id": "disable_monday",
+      "label": "Disable Monday",
+      "default": false
+    },
+    {
+      "type": "checkbox",
+      "id": "disable_tuesday",
+      "label": "Disable Tuesday",
+      "default": false
+    },
+    {
+      "type": "checkbox",
+      "id": "disable_wednesday",
+      "label": "Disable Wednesday",
+      "default": false
+    },
+    {
+      "type": "checkbox",
+      "id": "disable_thursday",
+      "label": "Disable Thursday",
+      "default": false
+    },
+    {
+      "type": "checkbox",
+      "id": "disable_friday",
+      "label": "Disable Friday",
+      "default": false
+    },
+    {
+      "type": "checkbox",
+      "id": "disable_saturday",
+      "label": "Disable Saturday",
+      "default": true
+    },
+    {
+      "type": "checkbox",
+      "id": "disable_sunday",
+      "label": "Disable Sunday",
+      "default": true
+    },
+    {
+      "type": "textarea",
+      "id": "blocked_dates",
+      "label": "Specific Blocked Dates",
+      "info": "Comma separated list (YYYY-MM-DD). Example: 2025-12-25, 2026-01-01",
+      "placeholder": "2025-12-25, 2026-01-01"
+    },
+    {
+      "type": "header",
+      "content": "Time Slots"
+    },
+    {
+      "type": "checkbox",
+      "id": "enable_time_slots",
+      "label": "Enable Time Slot Selector",
+      "default": false
+    },
+    {
+      "type": "text",
+      "id": "time_label",
+      "label": "Time Field Label",
+      "default": "Select Time"
+    },
+    {
+      "type": "textarea",
+      "id": "time_slots",
+      "label": "Available Time Slots",
+      "default": "09:00 - 12:00, 14:00 - 18:00",
+      "info": "Comma separated list of time ranges."
+    },
+    {
+      "type": "header",
+      "content": "Language & Translations"
+    },
+    {
+      "type": "text",
+      "id": "error_weekend",
+      "label": "Error: Weekend/Holiday",
+      "default": "We do not deliver on weekends."
+    },
+    {
+      "type": "text",
+      "id": "error_disabled_day",
+      "label": "Error: Day Disabled",
+      "default": "We do not deliver on this day of the week."
+    },
+    {
+      "type": "text",
+      "id": "error_unavailable",
+      "label": "Error: Date Unavailable",
+      "default": "This date is unavailable for delivery."
+    },
+    {
+      "type": "header",
+      "content": "Design & Styling"
+    },
+    {
+      "type": "range",
+      "id": "container_width",
+      "min": 20,
+      "max": 100,
+      "step": 5,
+      "unit": "%",
+      "label": "Container Width",
+      "default": 100
+    },
+    {
+      "type": "color",
+      "id": "bg_color",
+      "label": "Input Background",
+      "default": "#ffffff"
+    },
+    {
+      "type": "color",
+      "id": "text_color",
+      "label": "Input Text Color",
+      "default": "#000000"
+    },
+    {
+      "type": "color",
+      "id": "border_color",
+      "label": "Border Color",
+      "default": "#cccccc"
+    },
+    {
+      "type": "color",
+      "id": "focus_color",
+      "label": "Focus Ring Color",
+      "default": "#000000"
+    },
+    {
+      "type": "range",
+      "id": "border_radius",
+      "min": 0,
+      "max": 20,
+      "step": 1,
+      "unit": "px",
+      "label": "Border Radius",
+      "default": 4
+    },
+    {
+      "type": "range",
+      "id": "input_padding",
+      "min": 5,
+      "max": 20,
+      "step": 1,
+      "unit": "px",
+      "label": "Inner Padding",
+      "default": 10
+    },
+    {
+      "type": "color",
+      "id": "label_color",
+      "label": "Label Color",
+      "default": "#000000"
+    },
+    {
+      "type": "range",
+      "id": "label_size",
+      "min": 12,
+      "max": 24,
+      "step": 1,
+      "unit": "px",
+      "label": "Label Font Size",
+      "default": 14
+    },
+    {
+      "type": "color",
+      "id": "help_text_color",
+      "label": "Help Text Color",
+      "default": "#666666"
+    },
+    {
+      "type": "color",
+      "id": "error_color",
+      "label": "Error Message Color",
+      "default": "#ff0000"
+    }
+  ]
+}
+{% endschema %}
