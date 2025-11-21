@@ -397,3 +397,4 @@ Funcionalidades planificadas para versión premium:
 **Última actualización:** Noviembre 2025  
 **Versión del documento:** 1.0
 
+

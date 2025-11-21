@@ -156,3 +156,4 @@ Abre `https://TU-URL.vercel.app` y deberías ver tu Dashboard funcionando.
 
 **Tiempo total estimado: 15-20 minutos**
 
+
