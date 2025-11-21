@@ -2,7 +2,6 @@ import type { HeadersFunction, LoaderFunctionArgs } from "react-router";
 import { useLoaderData } from "react-router";
 import { authenticate } from "../shopify.server";
 import { boundary } from "@shopify/shopify-app-react-router/server";
-import { Page, Card, BlockStack, Text, Button } from "@shopify/polaris";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const { session } = await authenticate.admin(request);
@@ -19,24 +18,25 @@ export default function Index() {
   };
 
   return (
-    <Page title="Dashboard">
-      <Card>
-        <BlockStack gap="400">
-          <Text variant="headingLg" as="h2">
-            Welcome to Simple Date Picker!
-          </Text>
-          <Text variant="bodyMd">
-            Your app is now running successfully on shop: <strong>{shop}</strong>
-          </Text>
-          <Text variant="bodyMd">
-            Click the button below to open the theme editor and add the date picker to your cart page.
-          </Text>
-          <Button variant="primary" onClick={openThemeEditor}>
-            Open Theme Editor
-          </Button>
-        </BlockStack>
-      </Card>
-    </Page>
+    <div style={{ padding: '20px', fontFamily: 'Arial, sans-serif' }}>
+      <h1>Dashboard</h1>
+      <p>Welcome to Simple Date Picker!</p>
+      <p>Your shop: <strong>{shop}</strong></p>
+      <button 
+        onClick={openThemeEditor}
+        style={{
+          background: '#008060',
+          color: 'white',
+          border: 'none',
+          padding: '12px 24px',
+          borderRadius: '4px',
+          cursor: 'pointer',
+          fontSize: '14px'
+        }}
+      >
+        Open Theme Editor
+      </button>
+    </div>
   );
 }
 
