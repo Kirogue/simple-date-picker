@@ -5,11 +5,22 @@ declare global {
   var prismaGlobal: PrismaClient;
 }
 
+// Configure Prisma for serverless environments (Vercel)
+// Add connection pool parameters to the DATABASE_URL for better connection handling
+const getDatabaseUrl = () => {
+  const url = process.env.DATABASE_URL || "";
+  // If URL already has query parameters, append; otherwise add them
+  if (url.includes("?")) {
+    return `${url}&connection_limit=1&pool_timeout=20`;
+  }
+  return `${url}?connection_limit=1&pool_timeout=20`;
+};
+
 const prismaClientOptions = {
   log: process.env.NODE_ENV === "development" ? ["query", "error", "warn"] : ["error"],
   datasources: {
     db: {
-      url: process.env.DATABASE_URL,
+      url: getDatabaseUrl(),
     },
   },
 };
