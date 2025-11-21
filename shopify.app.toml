@@ -2,7 +2,7 @@
 
 client_id = "82e6be274dc432d17f3989fc7dc49637"
 name = "simple-date-picker"
-application_url = "https://example.com"
+application_url = "https://simple-date-picker-chi.vercel.app"
 embedded = true
 
 [build]
@@ -24,4 +24,7 @@ api_version = "2026-01"
 scopes = "write_products"
 
 [auth]
-redirect_urls = [ "https://example.com/api/auth" ]
+redirect_urls = [ 
+  "https://simple-date-picker-chi.vercel.app/api/auth",
+  "https://simple-date-picker-chi.vercel.app/auth/callback"
+]
