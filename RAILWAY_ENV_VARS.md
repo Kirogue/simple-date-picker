@@ -7,7 +7,9 @@ Configura estas variables en el Dashboard de Railway:
 ### 1. Base de Datos
 | Variable | Valor |
 |----------|-------|
-| `DATABASE_URL` | Railway la provee automáticamente si agregas un servicio PostgreSQL. Formato: `postgresql://user:password@host:port/database` |
+| `DATABASE_URL` | **IMPORTANTE**: Usa la variable `DATABASE_PRIVATE_URL` de Railway (sin SSL externo) o configura correctamente. Railway la provee automáticamente si agregas un servicio PostgreSQL. |
+
+> ⚠️ **Nota sobre conexión**: Si usas el proxy interno de Railway (`proxy.rlwy.net`), la conexión SSL es manejada automáticamente.
 
 ### 2. Shopify API
 | Variable | Valor |
@@ -18,7 +20,7 @@ Configura estas variables en el Dashboard de Railway:
 ### 3. URLs de la Aplicación
 | Variable | Valor |
 |----------|-------|
-| `SHOPIFY_APP_URL` | URL de tu app en Railway (ej: `https://simple-date-picker-production.up.railway.app`) |
+| `SHOPIFY_APP_URL` | `https://simple-date-picker-production.up.railway.app` |
 
 ### 4. Configuración General
 | Variable | Valor |
@@ -32,21 +34,43 @@ Configura estas variables en el Dashboard de Railway:
 
 1. **Crear servicio PostgreSQL:**
    - En tu proyecto de Railway, click en "New" > "Database" > "PostgreSQL"
-   - Railway creará automáticamente la variable `DATABASE_URL`
+   - Railway creará automáticamente las variables:
+     - `DATABASE_URL` (conexión pública)
+     - `DATABASE_PRIVATE_URL` (conexión interna - **RECOMENDADA**)
 
-2. **Agregar variables de entorno:**
-   - Ve a tu servicio de la app > "Variables"
+2. **Configurar referencia de variable:**
+   - En tu servicio de la app > "Variables"
+   - Crea `DATABASE_URL` y usa referencia: `${{Postgres.DATABASE_PRIVATE_URL}}`
+   - Esto usa la conexión interna de Railway (más rápida y estable)
+
+3. **Agregar variables de entorno:**
    - Agrega cada variable de la tabla de arriba
+   - Asegúrate de que `SHOPIFY_API_SECRET` esté configurado
 
-3. **Actualizar URLs en Shopify Partners:**
-   - Después del primer deploy, copia la URL de Railway
+4. **Actualizar URLs en Shopify Partners:**
    - Ve a partners.shopify.com > Tu App > "App Setup"
-   - Actualiza "App URL" con tu URL de Railway
+   - Actualiza "App URL": `https://simple-date-picker-production.up.railway.app`
    - Actualiza "Allowed redirection URL(s)" con:
-     - `https://tu-app.up.railway.app/auth/callback`
-     - `https://tu-app.up.railway.app/api/auth`
+     - `https://simple-date-picker-production.up.railway.app/auth/callback`
+     - `https://simple-date-picker-production.up.railway.app/auth/login`
 
-4. **Actualizar shopify.app.toml:**
-   - Cambia `application_url` por tu URL de Railway
-   - Actualiza los `redirect_urls`
+5. **Verificar healthcheck:**
+   - Railway verificará `/healthcheck` para confirmar que la app está corriendo
+   - Puedes probar manualmente: `https://simple-date-picker-production.up.railway.app/healthcheck`
+
+---
+
+## Troubleshooting
+
+### Error: "could not accept SSL connection"
+- Usa `DATABASE_PRIVATE_URL` en vez de `DATABASE_URL` pública
+- La conexión interna de Railway no requiere SSL
+
+### Error: "relation already exists"
+- Esto es normal si la migración ya se ejecutó antes
+- El nuevo script usa `prisma migrate deploy` que maneja esto correctamente
+
+### Healthcheck falla
+- Verifica que la variable `DATABASE_URL` esté configurada correctamente
+- Revisa los logs de deploy en Railway para ver errores específicos
 
