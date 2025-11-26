@@ -1,8 +1,6 @@
 FROM node:20-alpine
 RUN apk add --no-cache openssl
 
-EXPOSE 3000
-
 WORKDIR /app
 
 ENV NODE_ENV=production
@@ -29,5 +27,6 @@ RUN npm run build
 RUN npm prune --omit=dev
 
 # Start command: run migrations then start the server
-# HOST and PORT are set here (not in ENV) to avoid affecting the build
-CMD HOST=0.0.0.0 PORT=3000 npm run docker-start
+# HOST=0.0.0.0 to listen on all interfaces (required for Railway)
+# PORT is set automatically by Railway, don't override it
+CMD HOST=0.0.0.0 npm run docker-start
