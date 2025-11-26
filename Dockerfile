@@ -27,6 +27,5 @@ RUN npm run build
 RUN npm prune --omit=dev
 
 # Start command: run migrations then start the server
-# HOST=0.0.0.0 to listen on all interfaces (required for Railway)
-# PORT is set automatically by Railway, don't override it
-CMD HOST=0.0.0.0 npm run docker-start
+# server.js is configured to listen on 0.0.0.0 and uses PORT from Railway
+CMD ["npm", "run", "docker-start"]
