@@ -5,11 +5,32 @@ declare global {
   var prismaGlobal: PrismaClient;
 }
 
+// Log database configuration (without sensitive data)
+const logDbConfig = () => {
+  const url = process.env.DATABASE_URL || "";
+  if (!url) {
+    console.error("DATABASE_URL is not set!");
+    return;
+  }
+  try {
+    const parsed = new URL(url);
+    console.log(`Database host: ${parsed.hostname}`);
+    console.log(`Database name: ${parsed.pathname.slice(1)}`);
+  } catch (e) {
+    console.log("Could not parse DATABASE_URL");
+  }
+};
+
+logDbConfig();
+
 // Configure Prisma for Railway/production environments
 // Railway PostgreSQL requires proper connection parameters
 const getDatabaseUrl = () => {
   const url = process.env.DATABASE_URL || "";
-  if (!url) return url;
+  if (!url) {
+    console.error("DATABASE_URL is not set - database operations will fail");
+    return url;
+  }
   
   // Build connection parameters
   const params = new URLSearchParams();
@@ -21,6 +42,9 @@ const getDatabaseUrl = () => {
   if (url.includes("proxy.rlwy.net")) {
     // Internal Railway proxy - SSL is handled by the proxy
     params.set("sslmode", "disable");
+  } else if (url.includes("railway.internal")) {
+    // Internal Railway connection - no SSL needed
+    params.set("sslmode", "disable");
   } else if (process.env.NODE_ENV === "production") {
     // External connection in production - require SSL
     params.set("sslmode", "require");
@@ -28,7 +52,9 @@ const getDatabaseUrl = () => {
   
   // Append parameters to URL
   const separator = url.includes("?") ? "&" : "?";
-  return `${url}${separator}${params.toString()}`;
+  const finalUrl = `${url}${separator}${params.toString()}`;
+  console.log("Database connection configured with SSL mode:", url.includes("railway.internal") ? "disabled (internal)" : "enabled");
+  return finalUrl;
 };
 
 const prismaClientOptions: ConstructorParameters<typeof PrismaClient>[0] = {
