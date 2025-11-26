@@ -6,8 +6,6 @@ EXPOSE 3000
 WORKDIR /app
 
 ENV NODE_ENV=production
-ENV HOST=0.0.0.0
-ENV PORT=3000
 
 # Copy package files first
 COPY package.json package-lock.json* ./
@@ -31,4 +29,5 @@ RUN npm run build
 RUN npm prune --omit=dev
 
 # Start command: run migrations then start the server
-CMD ["npm", "run", "docker-start"]
+# HOST and PORT are set here (not in ENV) to avoid affecting the build
+CMD HOST=0.0.0.0 PORT=3000 npm run docker-start
