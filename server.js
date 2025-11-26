@@ -7,8 +7,9 @@ const app = express();
 app.use(express.static("build/client"));
 
 // Handle all other requests with the React Router app
+// Express 5 requires named wildcards, use "{*path}" syntax
 app.all(
-  "*",
+  "{*path}",
   createRequestHandler({
     build: await import("./build/server/index.js"),
   })
