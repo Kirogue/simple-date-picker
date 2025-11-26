@@ -53,7 +53,42 @@ try {
   console.log("Build loaded successfully");
 } catch (err) {
   console.error("Failed to load build:", err);
-  process.exit(1);
+  console.error("Error details:", err.message);
+  if (err.stack) {
+    console.error("Stack trace:", err.stack);
+  }
+
+  // If build fails to load, start emergency server with healthcheck
+  // This allows Railway to connect and get diagnostic information
+  console.log("Starting emergency diagnostic server...");
+
+  app.get("/healthcheck", (req, res) => {
+    res.status(503).json({
+      status: "error",
+      message: "Application failed to initialize",
+      error: err.message,
+      timestamp: new Date().toISOString()
+    });
+  });
+
+  app.get("*", (req, res) => {
+    res.status(503).json({
+      status: "error",
+      message: "Application is unavailable due to initialization failure",
+      error: err.message
+    });
+  });
+
+  const PORT = process.env.PORT || 3000;
+  const HOST = "0.0.0.0";
+
+  app.listen(PORT, HOST, () => {
+    console.log(`Emergency server listening on http://${HOST}:${PORT}`);
+    console.log("Please check logs above for initialization errors");
+  });
+
+  // Don't exit - let Railway see the error via healthcheck
+  throw err;
 }
 
 // Handle all other requests with the React Router app

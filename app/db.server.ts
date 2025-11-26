@@ -2,26 +2,10 @@ import { PrismaClient } from "@prisma/client";
 
 declare global {
   // eslint-disable-next-line no-var
-  var prismaGlobal: PrismaClient;
+  var prismaGlobal: PrismaClient | undefined;
 }
 
-// Log database configuration (without sensitive data)
-const logDbConfig = () => {
-  const url = process.env.DATABASE_URL || "";
-  if (!url) {
-    console.error("DATABASE_URL is not set!");
-    return;
-  }
-  try {
-    const parsed = new URL(url);
-    console.log(`Database host: ${parsed.hostname}`);
-    console.log(`Database name: ${parsed.pathname.slice(1)}`);
-  } catch (e) {
-    console.log("Could not parse DATABASE_URL");
-  }
-};
-
-logDbConfig();
+let prismaInstance: PrismaClient | undefined;
 
 // Configure Prisma for Railway/production environments
 // Railway PostgreSQL requires proper connection parameters
@@ -29,7 +13,7 @@ const getDatabaseUrl = () => {
   const url = process.env.DATABASE_URL || "";
   if (!url) {
     console.error("DATABASE_URL is not set - database operations will fail");
-    return url;
+    throw new Error("DATABASE_URL environment variable is required");
   }
   
   // Build connection parameters
@@ -57,24 +41,57 @@ const getDatabaseUrl = () => {
   return finalUrl;
 };
 
-const prismaClientOptions: ConstructorParameters<typeof PrismaClient>[0] = {
-  log: process.env.NODE_ENV === "development" 
-    ? ["query", "error", "warn"] as const
-    : ["error"] as const,
-  datasources: {
-    db: {
-      url: getDatabaseUrl(),
-    },
-  },
-};
-
-// In development, reuse the global prisma instance to prevent too many connections
-if (process.env.NODE_ENV !== "production") {
-  if (!global.prismaGlobal) {
-    global.prismaGlobal = new PrismaClient(prismaClientOptions);
+// Lazy initialization - only create Prisma client when first accessed
+function getPrismaClient(): PrismaClient {
+  if (prismaInstance) {
+    return prismaInstance;
   }
+
+  console.log("Initializing Prisma Client...");
+
+  // Log database configuration (without sensitive data)
+  const url = process.env.DATABASE_URL || "";
+  if (url) {
+    try {
+      const parsed = new URL(url);
+      console.log(`Database host: ${parsed.hostname}`);
+      console.log(`Database name: ${parsed.pathname.slice(1)}`);
+    } catch (e) {
+      console.log("Could not parse DATABASE_URL");
+    }
+  }
+
+  const prismaClientOptions: ConstructorParameters<typeof PrismaClient>[0] = {
+    log: process.env.NODE_ENV === "development" 
+      ? ["query", "error", "warn"] as const
+      : ["error"] as const,
+    datasources: {
+      db: {
+        url: getDatabaseUrl(),
+      },
+    },
+  };
+
+  // In development, reuse the global prisma instance to prevent too many connections
+  if (process.env.NODE_ENV !== "production") {
+    if (!global.prismaGlobal) {
+      global.prismaGlobal = new PrismaClient(prismaClientOptions);
+    }
+    prismaInstance = global.prismaGlobal;
+  } else {
+    prismaInstance = new PrismaClient(prismaClientOptions);
+  }
+
+  console.log("Prisma Client initialized successfully");
+  return prismaInstance;
 }
 
-const prisma = global.prismaGlobal ?? new PrismaClient(prismaClientOptions);
+// Create a proxy that lazily initializes the Prisma client
+const db = new Proxy({} as PrismaClient, {
+  get(target, prop) {
+    const client = getPrismaClient();
+    return (client as any)[prop];
+  }
+});
 
-export default prisma;
+export default db;
