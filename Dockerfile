@@ -26,6 +26,9 @@ RUN npm run build
 # Remove dev dependencies after build
 RUN npm prune --omit=dev
 
+# Set Node.js memory limit to stay within Railway's limits (512MB default)
+ENV NODE_OPTIONS="--max-old-space-size=384"
+
 # Start command: run migrations then start the server
 # server.js is configured to listen on 0.0.0.0 and uses PORT from Railway
 CMD ["npm", "run", "docker-start"]

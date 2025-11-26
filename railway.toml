@@ -7,4 +7,8 @@ healthcheckPath = "/healthcheck"
 healthcheckTimeout = 120
 restartPolicyType = "on_failure"
 restartPolicyMaxRetries = 10
+# Prevent app from sleeping
+sleepApplication = false
+# Number of replicas
+numReplicas = 1
 
