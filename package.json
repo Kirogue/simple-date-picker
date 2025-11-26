@@ -12,7 +12,7 @@
     "start": "react-router-serve ./build/server/index.js",
     "start:prod": "react-router-serve --host 0.0.0.0 ./build/server/index.js",
     "docker-start": "npm run setup && npm run start:prod",
-    "setup": "prisma migrate deploy",
+    "setup": "npx prisma migrate resolve --applied 20231126000000_init || true && prisma migrate deploy",
     "railway-start": "prisma migrate deploy && react-router-serve --host 0.0.0.0 ./build/server/index.js",
     "postbuild": "prisma generate",
     "lint": "eslint --ignore-path .gitignore --cache --cache-location ./node_modules/.cache/eslint .",
